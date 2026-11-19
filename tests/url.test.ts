@@ -1,4 +1,4 @@
-import { buildStartUrl, buildAutoPostForm, buildDebugPage } from '../src/url';
+import { buildStartUrl, buildAutoPostForm, buildDebugPage, assertReturnUrl } from '../src/url';
 
 describe('buildStartUrl', () => {
   it('appends only defined params and encodes them', () => {
@@ -22,6 +22,79 @@ describe('buildAutoPostForm', () => {
     expect(html).toContain('target="_top"');
     expect(html).toContain('name="A" value="1"');
     expect(html).toContain('onload="document.forms[0].submit()"');
+  });
+});
+
+describe('return URL guard', () => {
+  it.each([
+    'javascript:alert(1)',
+    'JaVaScRiPt:alert(1)',
+    ' javascript:alert(1)',
+    'data:text/html,<script>alert(1)</script>',
+    'vbscript:x',
+    'file:///etc/passwd',
+    '/relative/path',
+    '//attacker.example/collect',
+    'not a url',
+    '',
+    'https://user:pw@erp.example/hook',
+  ])('refuses %j', (url) => {
+    expect(() => assertReturnUrl(url)).toThrow();
+    expect(() => buildAutoPostForm(url, { A: '1' })).toThrow();
+    expect(() => buildDebugPage({ mode: 'oci', returnUrl: url, fields: { A: '1' } })).toThrow();
+  });
+
+  it('accepts https URLs, keeping the query string', () => {
+    expect(assertReturnUrl('https://erp.example/sap/bc/gui?sap-client=100&x=1')).toBe(
+      'https://erp.example/sap/bc/gui?sap-client=100&x=1',
+    );
+  });
+
+  it.each([
+    'http://erp.example/hook',
+    'HTTP://erp.example/hook',
+    'http://localhost.attacker.test/hook',
+    'http://127.0.0.1.attacker.test/hook',
+    'http://10.0.0.5/hook',
+  ])('refuses plain http to a non-loopback host: %j', (url) => {
+    expect(() => assertReturnUrl(url)).toThrow(/https/);
+    expect(() => buildAutoPostForm(url, { A: '1' })).toThrow(/https/);
+    expect(() => buildDebugPage({ mode: 'oci', returnUrl: url, fields: { A: '1' } })).toThrow(/https/);
+  });
+
+  it.each([
+    ['http://localhost:8080/hook', 'http://localhost:8080/hook'],
+    ['HTTP://LOCALHOST/hook', 'http://localhost/hook'],
+    ['http://127.0.0.1:8080/hook', 'http://127.0.0.1:8080/hook'],
+    ['http://[::1]:8080/hook', 'http://[::1]:8080/hook'],
+  ])('accepts plain http to a loopback host (dev procurement simulators): %j', (url, href) => {
+    expect(assertReturnUrl(url)).toBe(href);
+  });
+
+  it('allowedHosts still applies to loopback http', () => {
+    expect(() => assertReturnUrl('http://localhost:8080/hook', ['erp.example'])).toThrow(/not allowed/);
+    expect(assertReturnUrl('http://localhost:8080/hook', ['localhost'])).toBe('http://localhost:8080/hook');
+  });
+
+  it('allowedHosts: exact hostname match, case-insensitive; empty list = any host', () => {
+    expect(assertReturnUrl('https://ERP.example/hook', ['erp.example'])).toBe('https://erp.example/hook');
+    expect(() => assertReturnUrl('https://attacker.example/hook', ['erp.example'])).toThrow(/not allowed/);
+    expect(() => assertReturnUrl('https://erp.example.attacker.test/hook', ['erp.example'])).toThrow();
+    expect(assertReturnUrl('https://any.example/hook', [])).toBe('https://any.example/hook');
+    expect(() =>
+      buildAutoPostForm('https://attacker.example/hook', { A: '1' }, { allowedHosts: ['erp.example'] }),
+    ).toThrow();
+  });
+
+  it('escapes every attribute and value', () => {
+    const html = buildAutoPostForm(
+      'https://erp.example/hook?a="><script>x</script>',
+      { 'k"><img src=x onerror=y>': 'v"><script>z</script>' },
+      { target: '_top"><script>', title: '</title><script>', submitLabel: '<b>' },
+    );
+    expect(html).not.toMatch(/<script|<img|<b>/);
+    expect(html).toContain(`target="_top&quot;&gt;&lt;script&gt;"`);
+    expect(html).toContain('name="k&quot;&gt;&lt;img src=x onerror=y&gt;"');
   });
 });
 

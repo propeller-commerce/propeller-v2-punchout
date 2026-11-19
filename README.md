@@ -56,8 +56,9 @@ OCI   ERP ──GET /api/punchout/enter?mode=oci&mtoken=…&HOOK_URL=…&~CALLER
 | `mapOciParams(query)` | Extract OCI session params (`~CALLER/~OKCODE/~TARGET/CLASSIFICATION/…`) from the entry URL, stripping the `~`. |
 | `buildOciFields(cart, ctx, mapping?)` | The ordered `NEW_ITEM-*[i]` field set + SAP header + shipping line. |
 | `buildStartUrl(base, params)` | Build the `/api/punchout/enter?…` link. |
-| `buildAutoPostForm(action, fields, opts?)` | A self-submitting HTML form (the transfer response). |
-| `buildDebugPage({ mode, returnUrl, fields?, xml? })` | A readable preview of the converted cart (OCI table / cXML `<pre>`) instead of auto-posting — for local testing. |
+| `buildAutoPostForm(action, fields, opts?)` | A self-submitting HTML form (the transfer response). Throws unless `action` passes `assertReturnUrl` (with `opts.allowedHosts`); every attribute and value is HTML-escaped. |
+| `buildDebugPage({ mode, returnUrl, fields?, xml?, allowedHosts? })` | A readable preview of the converted cart (OCI table / cXML `<pre>`) instead of auto-posting — for local testing. Same return-URL check. |
+| `assertReturnUrl(url, allowedHosts?)` | Returns the normalized URL, or throws for anything but an absolute `https:` URL without credentials (`javascript:`, `data:`, plain `http:`, relative, malformed), or for a hostname outside a non-empty `allowedHosts` (exact, case-insensitive). Plain `http:` is accepted only for the loopback hosts `localhost`, `127.0.0.1` and `[::1]`, so a local procurement simulator (e.g. `http://localhost:8080/hook`) still works. Call it when the session is created too. |
 | `normalizeUnit(unit, default?)` | Unit → ERP UOM code (`doos→CS`, `stuk→PCE`, …; default `PCE`). |
 
 Types: `PunchoutCart`, `PunchoutCartLine`, `PunchoutProduct`, `PunchoutContext`,

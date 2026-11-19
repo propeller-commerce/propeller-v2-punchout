@@ -38,6 +38,6 @@ export { mapOciParams, buildOciFields, OCI_PARAM_NAMES } from './oci';
 
 // Shared helpers
 export { normalizeUnit } from './units';
-export { buildStartUrl, buildAutoPostForm, buildDebugPage } from './url';
+export { buildStartUrl, buildAutoPostForm, buildDebugPage, assertReturnUrl } from './url';
 export type { AutoPostFormOptions, DebugPageOptions } from './url';
 export { xmlEscape, cdata } from './xml';

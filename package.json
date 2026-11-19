@@ -1,6 +1,6 @@
 {
   "name": "@propeller-commerce/propeller-v2-punchout",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "OCI + cXML PunchOut protocol logic for the Propeller eCommerce V2 platform — parses PunchOutSetupRequest XML, builds PunchOutSetupResponse / PunchOutOrderMessage / OCI NEW_ITEM field sets from a cart via a configurable field mapping. Server-side, framework-agnostic, SDK-free (pure).",
   "main": "dist/cjs/index.js",
   "module": "dist/esm/index.js",
